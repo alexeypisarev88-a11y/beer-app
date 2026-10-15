@@ -124,10 +124,12 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             
             LaunchedEffect(isEnabled) {
                 if (isEnabled) {
-                    val workRequest = PeriodicWorkRequestBuilder<BeerReminderWorker>(24, TimeUnit.HOURS).build()
-                    WorkManager.getInstance().enqueue(workRequest)
+                    val workRequest = PeriodicWorkRequestBuilder<BeerReminderWorker>(24, TimeUnit.HOURS)
+                        .setInitialDelay(24, TimeUnit.HOURS)
+                        .build()
+                    WorkManager.getInstance().enqueueUniquePeriodicWork("beer_reminder", androidx.work.ExistingPeriodicWorkPolicy.KEEP, workRequest)
                 } else {
-                    WorkManager.getInstance().cancelAllWork()
+                    WorkManager.getInstance().cancelUniqueWork("beer_reminder")
                 }
             }
         }
