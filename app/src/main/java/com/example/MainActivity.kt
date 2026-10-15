@@ -48,16 +48,19 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
     var showSettings by remember { mutableStateOf(false) }
 
     if (showChart) {
+        androidx.activity.compose.BackHandler { showChart = false }
         Column(modifier = modifier) {
-            Button(onClick = { showChart = false }) { Text("Back to Reminder") }
+            Button(onClick = { showChart = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
             ChartScreen()
         }
     } else if (showAchievements) {
+        androidx.activity.compose.BackHandler { showAchievements = false }
         Column(modifier = modifier) {
-            Button(onClick = { showAchievements = false }) { Text("Back to Reminder") }
+            Button(onClick = { showAchievements = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
             AchievementsScreen()
         }
     } else if (showSettings) {
+        androidx.activity.compose.BackHandler { showSettings = false }
         SettingsScreen(onBack = { showSettings = false }, darkTheme = isDarkTheme, onThemeChange = onThemeChange)
     } else {
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -108,7 +111,7 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             Spacer(modifier = Modifier.height(16.dp))
             val buttonModifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
             Button(onClick = { showChart = true }, modifier = buttonModifier) {
-                Text("View Consumption Chart")
+                Text("Calendar")
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showAchievements = true }, modifier = buttonModifier) {
