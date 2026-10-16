@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,11 @@ class MainActivity : ComponentActivity() {
         setContent {
         var isDarkTheme by remember { mutableStateOf(false) }
         MyApplicationTheme(darkTheme = isDarkTheme) {
+            val view = androidx.compose.ui.platform.LocalView.current
+            androidx.compose.runtime.SideEffect {
+                val window = (view.context as android.app.Activity).window
+                androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+            }
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                 BeerReminderScreen(
                     modifier = Modifier.padding(innerPadding),
@@ -77,7 +83,17 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
         }
 
         Column(
-            modifier = modifier.fillMaxSize().padding(16.dp),
+            modifier = modifier
+                .fillMaxSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        )
+                    )
+                )
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -125,7 +141,6 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             LaunchedEffect(isEnabled) {
                 if (isEnabled) {
                     val workRequest = PeriodicWorkRequestBuilder<BeerReminderWorker>(24, TimeUnit.HOURS)
-                        .setInitialDelay(24, TimeUnit.HOURS)
                         .build()
                     WorkManager.getInstance().enqueueUniquePeriodicWork("beer_reminder", androidx.work.ExistingPeriodicWorkPolicy.KEEP, workRequest)
                 } else {

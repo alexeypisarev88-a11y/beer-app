@@ -17,6 +17,8 @@ fun SettingsScreen(
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -45,9 +47,5 @@ fun SettingsScreen(
         }) {
             Text("Set time: ${"%02d".format(reminderTime.first)}:${"%02d".format(reminderTime.second)}")
         }
-        
-        Spacer(modifier = Modifier.weight(1f))
-        
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back") }
     }
 }
