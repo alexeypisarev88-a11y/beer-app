@@ -1,6 +1,7 @@
 package com.example
 
 import android.Manifest
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -148,6 +149,12 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             }
             
             LaunchedEffect(isEnabled, reminderTime) {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+                val intent = android.content.Intent(context, AlarmReceiver::class.java)
+                val pendingIntent = android.app.PendingIntent.getBroadcast(
+                    context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
+
                 if (isEnabled) {
                     val calendar = java.util.Calendar.getInstance()
                     val target = java.util.Calendar.getInstance().apply {
@@ -156,14 +163,19 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                         set(java.util.Calendar.SECOND, 0)
                     }
                     if (target.before(calendar)) target.add(java.util.Calendar.DAY_OF_YEAR, 1)
-                    val delay = target.timeInMillis - calendar.timeInMillis
 
-                    val workRequest = PeriodicWorkRequestBuilder<BeerReminderWorker>(24, TimeUnit.HOURS)
-                        .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-                        .build()
-                    WorkManager.getInstance().enqueueUniquePeriodicWork("beer_reminder", androidx.work.ExistingPeriodicWorkPolicy.UPDATE, workRequest)
+                    try {
+                        alarmManager.setRepeating(
+                            android.app.AlarmManager.RTC_WAKEUP,
+                            target.timeInMillis,
+                            android.app.AlarmManager.INTERVAL_DAY,
+                            pendingIntent
+                        )
+                    } catch (e: SecurityException) {
+                        // Handle permission error
+                    }
                 } else {
-                    WorkManager.getInstance().cancelUniqueWork("beer_reminder")
+                    alarmManager.cancel(pendingIntent)
                 }
             }
         }
