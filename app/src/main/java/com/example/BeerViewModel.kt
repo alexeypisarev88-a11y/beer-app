@@ -10,20 +10,26 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 class BeerViewModel(private val beerDao: BeerDao) : ViewModel() {
-    val consumption = beerDao.getRecentConsumption()
+    val consumption = beerDao.getAllConsumption()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val achievements = consumption.map { list ->
-        val totalBeers = list.sumOf { it.count }
-        val distinctDays = list.map {
+        val distinctDaysAllTime = list.map {
             val cal = Calendar.getInstance()
             cal.timeInMillis = it.date
-            cal.get(Calendar.DAY_OF_YEAR)
+            Pair(cal.get(Calendar.YEAR), cal.get(Calendar.DAY_OF_YEAR))
         }.distinct().size
 
+        val consumptionByWeek = list.groupBy {
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = it.date
+            Pair(cal.get(Calendar.YEAR), cal.get(Calendar.WEEK_OF_YEAR))
+        }
+        val maxBeersInAWeek = consumptionByWeek.values.maxOfOrNull { weekList -> weekList.sumOf { it.count } } ?: 0
+
         listOf(
-            Achievement("Beer Connoisseur", "Logged 10+ beers", totalBeers >= 10),
-            Achievement("Weekend Warrior", "Logged beer on 5+ days this week", distinctDays >= 5)
+            Achievement("Beer Connoisseur", "Drunk beer for 10 distinct days", distinctDaysAllTime >= 10),
+            Achievement("Weekend Warrior", "Drunk > 5 beers in a week", maxBeersInAWeek > 5)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

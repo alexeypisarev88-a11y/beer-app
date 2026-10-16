@@ -79,11 +79,5 @@ fun ChartScreen(viewModel: BeerViewModel = viewModel(factory = BeerViewModelFact
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
-        BeerGlassAnimation(isFilled = consumption.isNotEmpty())
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { viewModel.addConsumption(1) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) {
-            Text("Add 1 Beer")
-        }
     }
 }

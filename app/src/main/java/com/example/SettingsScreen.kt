@@ -16,9 +16,10 @@ fun SettingsScreen(
     onThemeChange: (Boolean) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Settings", style = MaterialTheme.typography.headlineMedium)
         
         Spacer(modifier = Modifier.height(16.dp))
         

@@ -14,6 +14,7 @@ class DataStoreManager(private val context: Context) {
         val HOUR_KEY = intPreferencesKey("reminder_hour")
         val MINUTE_KEY = intPreferencesKey("reminder_minute")
         val ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
+        val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
     }
 
     val reminderTime = context.dataStore.data.map { prefs ->
@@ -22,6 +23,10 @@ class DataStoreManager(private val context: Context) {
 
     val isEnabled = context.dataStore.data.map { prefs ->
         prefs[ENABLED_KEY] ?: false
+    }
+
+    val isDarkTheme = context.dataStore.data.map { prefs ->
+        prefs[DARK_THEME_KEY] ?: false
     }
 
     suspend fun saveReminderTime(hour: Int, minute: Int) {
@@ -34,6 +39,12 @@ class DataStoreManager(private val context: Context) {
     suspend fun setReminderEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun setDarkTheme(isDark: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[DARK_THEME_KEY] = isDark
         }
     }
 }

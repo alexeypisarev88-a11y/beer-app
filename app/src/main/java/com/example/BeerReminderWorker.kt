@@ -6,9 +6,26 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 class BeerReminderWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {
+        val db = (applicationContext as BeerApplication).database
+        val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+        val year = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        
+        // This is a blocking call in a Worker, which is fine
+        val consumedToday = runBlocking {
+            db.beerDao().getAllConsumption().first().any {
+                val cal = java.util.Calendar.getInstance()
+                cal.timeInMillis = it.date
+                cal.get(java.util.Calendar.DAY_OF_YEAR) == today && cal.get(java.util.Calendar.YEAR) == year
+            }
+        }
+
+        if (consumedToday) return Result.success()
+
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "beer_reminder_channel"
         

@@ -28,7 +28,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-        var isDarkTheme by remember { mutableStateOf(false) }
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val dataStoreManager = remember { DataStoreManager(context) }
+        val isDarkTheme by dataStoreManager.isDarkTheme.collectAsState(initial = false)
+        val scope = rememberCoroutineScope()
+        
         MyApplicationTheme(darkTheme = isDarkTheme) {
             val view = androidx.compose.ui.platform.LocalView.current
             androidx.compose.runtime.SideEffect {
@@ -39,7 +43,7 @@ class MainActivity : ComponentActivity() {
                 BeerReminderScreen(
                     modifier = Modifier.padding(innerPadding),
                     isDarkTheme = isDarkTheme,
-                    onThemeChange = { isDarkTheme = it }
+                    onThemeChange = { scope.launch { dataStoreManager.setDarkTheme(it) } }
                 )
             }
         }
@@ -56,13 +60,17 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
     if (showChart) {
         androidx.activity.compose.BackHandler { showChart = false }
         Column(modifier = modifier) {
+            Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = { showChart = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
+            Spacer(modifier = Modifier.height(16.dp))
             ChartScreen()
         }
     } else if (showAchievements) {
         androidx.activity.compose.BackHandler { showAchievements = false }
         Column(modifier = modifier) {
+            Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = { showAchievements = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
+            Spacer(modifier = Modifier.height(16.dp))
             AchievementsScreen()
         }
     } else if (showSettings) {
@@ -72,6 +80,7 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
         val context = androidx.compose.ui.platform.LocalContext.current
         val dataStoreManager = remember { DataStoreManager(context) }
         val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
+        val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
         val scope = rememberCoroutineScope()
         
         val launcher = rememberLauncherForActivityResult(
@@ -100,10 +109,10 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             val scope = rememberCoroutineScope()
             val dataStoreManager = remember { DataStoreManager(context) }
             val beerDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as BeerApplication).database.beerDao()
-            val recentConsumption by beerDao.getRecentConsumption().collectAsState(initial = emptyList())
+            val allConsumption by beerDao.getAllConsumption().collectAsState(initial = emptyList())
 
             BeerGlassAnimation(
-                isFilled = recentConsumption.isNotEmpty(), 
+                isFilled = allConsumption.isNotEmpty(), 
                 modifier = Modifier.size(128.dp).clickable {
                     scope.launch {
                         beerDao.insertConsumption(BeerConsumption(date = System.currentTimeMillis(), count = 1))
@@ -138,11 +147,21 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                 Text("Settings")
             }
             
-            LaunchedEffect(isEnabled) {
+            LaunchedEffect(isEnabled, reminderTime) {
                 if (isEnabled) {
+                    val calendar = java.util.Calendar.getInstance()
+                    val target = java.util.Calendar.getInstance().apply {
+                        set(java.util.Calendar.HOUR_OF_DAY, reminderTime.first)
+                        set(java.util.Calendar.MINUTE, reminderTime.second)
+                        set(java.util.Calendar.SECOND, 0)
+                    }
+                    if (target.before(calendar)) target.add(java.util.Calendar.DAY_OF_YEAR, 1)
+                    val delay = target.timeInMillis - calendar.timeInMillis
+
                     val workRequest = PeriodicWorkRequestBuilder<BeerReminderWorker>(24, TimeUnit.HOURS)
+                        .setInitialDelay(delay, TimeUnit.MILLISECONDS)
                         .build()
-                    WorkManager.getInstance().enqueueUniquePeriodicWork("beer_reminder", androidx.work.ExistingPeriodicWorkPolicy.KEEP, workRequest)
+                    WorkManager.getInstance().enqueueUniquePeriodicWork("beer_reminder", androidx.work.ExistingPeriodicWorkPolicy.UPDATE, workRequest)
                 } else {
                     WorkManager.getInstance().cancelUniqueWork("beer_reminder")
                 }
