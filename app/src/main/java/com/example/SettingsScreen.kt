@@ -48,5 +48,15 @@ fun SettingsScreen(
         }) {
             Text("Set time: ${"%02d".format(reminderTime.first)}:${"%02d".format(reminderTime.second)}")
         }
+
+        if (BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { ReminderScheduler.sendNotification(context) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
+            ) {
+                Text("Send Test Notification")
+            }
+        }
     }
 }

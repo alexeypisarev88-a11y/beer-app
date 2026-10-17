@@ -2,6 +2,7 @@ package com.example
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
@@ -54,9 +56,23 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
+    val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
+    val scope = rememberCoroutineScope()
+
     var showChart by remember { mutableStateOf(false) }
     var showAchievements by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isEnabled, reminderTime) {
+        if (isEnabled) {
+            ReminderScheduler.scheduleReminder(context, reminderTime.first, reminderTime.second)
+        } else {
+            ReminderScheduler.cancelReminder(context)
+        }
+    }
 
     if (showChart) {
         androidx.activity.compose.BackHandler { showChart = false }
@@ -78,18 +94,10 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
         androidx.activity.compose.BackHandler { showSettings = false }
         SettingsScreen(onBack = { showSettings = false }, darkTheme = isDarkTheme, onThemeChange = onThemeChange)
     } else {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val dataStoreManager = remember { DataStoreManager(context) }
-        val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
-        val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
-        val scope = rememberCoroutineScope()
-        
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission()
         ) { isGranted ->
-            if (isGranted) {
-                scope.launch { dataStoreManager.setReminderEnabled(true) }
-            }
+            scope.launch { dataStoreManager.setReminderEnabled(isGranted) }
         }
 
         Column(
@@ -107,8 +115,6 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            val scope = rememberCoroutineScope()
-            val dataStoreManager = remember { DataStoreManager(context) }
             val beerDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as BeerApplication).database.beerDao()
             val allConsumption by beerDao.getAllConsumption().collectAsState(initial = emptyList())
 
@@ -125,11 +131,17 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             Spacer(modifier = Modifier.height(16.dp))
             Switch(
                 checked = isEnabled,
-                onCheckedChange = {
-                    if (it && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            scope.launch { dataStoreManager.setReminderEnabled(true) }
+                        }
                     } else {
-                        scope.launch { dataStoreManager.setReminderEnabled(it) }
+                        scope.launch { dataStoreManager.setReminderEnabled(false) }
                     }
                 },
                 modifier = Modifier.testTag("reminder_switch")
@@ -146,37 +158,6 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showSettings = true }, modifier = buttonModifier) {
                 Text("Settings")
-            }
-            
-            LaunchedEffect(isEnabled, reminderTime) {
-                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-                val intent = android.content.Intent(context, AlarmReceiver::class.java)
-                val pendingIntent = android.app.PendingIntent.getBroadcast(
-                    context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                )
-
-                if (isEnabled) {
-                    val calendar = java.util.Calendar.getInstance()
-                    val target = java.util.Calendar.getInstance().apply {
-                        set(java.util.Calendar.HOUR_OF_DAY, reminderTime.first)
-                        set(java.util.Calendar.MINUTE, reminderTime.second)
-                        set(java.util.Calendar.SECOND, 0)
-                    }
-                    if (target.before(calendar)) target.add(java.util.Calendar.DAY_OF_YEAR, 1)
-
-                    try {
-                        alarmManager.setRepeating(
-                            android.app.AlarmManager.RTC_WAKEUP,
-                            target.timeInMillis,
-                            android.app.AlarmManager.INTERVAL_DAY,
-                            pendingIntent
-                        )
-                    } catch (e: SecurityException) {
-                        // Handle permission error
-                    }
-                } else {
-                    alarmManager.cancel(pendingIntent)
-                }
             }
         }
     }
