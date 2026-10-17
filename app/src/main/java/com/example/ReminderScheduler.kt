@@ -93,6 +93,19 @@ object ReminderScheduler {
         }
     }
 
+    data class NotificationContent(val title: String, val text: String)
+
+    private val funMessages = listOf(
+        NotificationContent("Beer time! 🍺", "Время охладиться и сделать паузу!"),
+        NotificationContent("Пятница пришла! 🍻", "Идеальный момент для холодного пенного!"),
+        NotificationContent("Бокал сам себя не выпьет! 🍺", "Пора сделать перерыв и насладиться моментом."),
+        NotificationContent("Время охладиться ❄️🍺", "Освежающий пенный бокал ждет тебя!"),
+        NotificationContent("Хмельной зов 🍻", "Отличный вечер начинается с хорошего пива."),
+        NotificationContent("Минутка для себя 🍺", "Трудовой день позади — пора налить бокальчик!"),
+        NotificationContent("Золотистая пенка 🍺", "Сделай глоток свежести и расслабься."),
+        NotificationContent("Пенный патруль 🍻", "Напоминание: день прошел отлично, если есть бокальчик!")
+    )
+
     fun sendNotification(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -119,10 +132,19 @@ object ReminderScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val calendar = Calendar.getInstance()
+        val isFriday = calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
+        val message = if (isFriday && (0..2).random() == 0) {
+            NotificationContent("Пятница пришла! 🍻", "Конец рабочей недели — время открыть холодный бокал!")
+        } else {
+            funMessages.random()
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Beer time!")
-            .setContentText("It's time for a beer!")
+            .setContentTitle(message.title)
+            .setContentText(message.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message.text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setContentIntent(pendingIntent)

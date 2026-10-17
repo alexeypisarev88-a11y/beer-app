@@ -76,20 +76,10 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
 
     if (showChart) {
         androidx.activity.compose.BackHandler { showChart = false }
-        Column(modifier = modifier) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = { showChart = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
-            Spacer(modifier = Modifier.height(16.dp))
-            ChartScreen()
-        }
+        ChartScreen(onBack = { showChart = false })
     } else if (showAchievements) {
         androidx.activity.compose.BackHandler { showAchievements = false }
-        Column(modifier = modifier) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = { showAchievements = false }, modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)) { Text("Back to Reminder") }
-            Spacer(modifier = Modifier.height(16.dp))
-            AchievementsScreen()
-        }
+        AchievementsScreen(onBack = { showAchievements = false })
     } else if (showSettings) {
         androidx.activity.compose.BackHandler { showSettings = false }
         SettingsScreen(onBack = { showSettings = false }, darkTheme = isDarkTheme, onThemeChange = onThemeChange)
@@ -118,13 +108,34 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             val beerDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as BeerApplication).database.beerDao()
             val allConsumption by beerDao.getAllConsumption().collectAsState(initial = emptyList())
 
-            BeerGlassAnimation(
-                isFilled = allConsumption.isNotEmpty(), 
-                modifier = Modifier.size(128.dp).clickable {
-                    scope.launch {
-                        beerDao.insertConsumption(BeerConsumption(date = System.currentTimeMillis(), count = 1))
-                    }
+            val isConsumedToday = remember(allConsumption) {
+                val todayCal = java.util.Calendar.getInstance()
+                val todayYear = todayCal.get(java.util.Calendar.YEAR)
+                val todayDay = todayCal.get(java.util.Calendar.DAY_OF_YEAR)
+                allConsumption.any {
+                    val cal = java.util.Calendar.getInstance().apply { timeInMillis = it.date }
+                    cal.get(java.util.Calendar.YEAR) == todayYear && cal.get(java.util.Calendar.DAY_OF_YEAR) == todayDay
                 }
+            }
+
+            LaunchedEffect(isConsumedToday) {
+                DynamicIconManager.updateAppIcon(context, isConsumedToday)
+            }
+
+            BeerGlassAnimation(
+                isFilled = isConsumedToday, 
+                modifier = Modifier
+                    .size(128.dp)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        triggerPouringVibration(context)
+                        scope.launch {
+                            beerDao.insertConsumption(BeerConsumption(date = System.currentTimeMillis(), count = 1))
+                            DynamicIconManager.updateAppIcon(context, true)
+                        }
+                    }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text("Beer Reminder", style = MaterialTheme.typography.headlineMedium)
@@ -160,5 +171,31 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                 Text("Settings")
             }
         }
+    }
+}
+
+fun triggerPouringVibration(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+        }
+
+        if (vibrator != null && vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Waveform: bubbling pulses that build up in frequency & intensity
+                val timings = longArrayOf(0, 35, 45, 35, 45, 40, 40, 45, 35, 50, 30, 70)
+                val amplitudes = intArrayOf(0, 35, 0, 55, 0, 80, 0, 110, 0, 140, 0, 190)
+                vibrator.vibrate(android.os.VibrationEffect.createWaveform(timings, amplitudes, -1))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(longArrayOf(0, 35, 45, 35, 45, 40, 40, 70), -1)
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }

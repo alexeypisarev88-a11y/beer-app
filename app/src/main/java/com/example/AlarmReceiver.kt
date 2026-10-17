@@ -47,6 +47,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     false
                 }
 
+                DynamicIconManager.updateAppIcon(context, consumedToday)
+
                 if (consumedToday) {
                     // Skip reminder if already consumed today
                     return@launch
