@@ -86,6 +86,85 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Section: Notifications & Schedule
+        Text(
+            text = "NOTIFICATIONS",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            val formattedTime = "${"%02d".format(reminderTime.first)}:${"%02d".format(reminderTime.second)}"
+            val openTimePicker = {
+                TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        scope.launch { dataStoreManager.saveReminderTime(hour, minute) }
+                    },
+                    reminderTime.first,
+                    reminderTime.second,
+                    true
+                ).show()
+            }
+
+            SettingRow(
+                icon = Icons.Default.Notifications,
+                title = "Daily Reminders",
+                subtitle = if (isEnabled) "Active at $formattedTime" else "Reminders are disabled",
+                trailing = {
+                    Switch(
+                        checked = isEnabled,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    scope.launch { dataStoreManager.setReminderEnabled(true) }
+                                }
+                            } else {
+                                scope.launch { dataStoreManager.setReminderEnabled(false) }
+                            }
+                        },
+                        modifier = Modifier.testTag("reminder_switch")
+                    )
+                }
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
+
+            SettingRow(
+                icon = Icons.Default.Alarm,
+                title = "Reminder Time",
+                subtitle = "Daily alert at $formattedTime",
+                onClick = openTimePicker,
+                trailing = {
+                    SuggestionChip(
+                        onClick = openTimePicker,
+                        label = {
+                            Text(
+                                text = formattedTime,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    )
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         // Section: Appearance
         Text(
             text = "APPEARANCE",
@@ -192,85 +271,6 @@ fun SettingsScreen(
                     }
                 }
             }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Section: Notifications & Schedule
-        Text(
-            text = "NOTIFICATIONS",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            val formattedTime = "${"%02d".format(reminderTime.first)}:${"%02d".format(reminderTime.second)}"
-            val openTimePicker = {
-                TimePickerDialog(
-                    context,
-                    { _, hour, minute ->
-                        scope.launch { dataStoreManager.saveReminderTime(hour, minute) }
-                    },
-                    reminderTime.first,
-                    reminderTime.second,
-                    true
-                ).show()
-            }
-
-            SettingRow(
-                icon = Icons.Default.Notifications,
-                title = "Daily Reminders",
-                subtitle = if (isEnabled) "Active at $formattedTime" else "Reminders are disabled",
-                trailing = {
-                    Switch(
-                        checked = isEnabled,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else {
-                                    scope.launch { dataStoreManager.setReminderEnabled(true) }
-                                }
-                            } else {
-                                scope.launch { dataStoreManager.setReminderEnabled(false) }
-                            }
-                        },
-                        modifier = Modifier.testTag("reminder_switch")
-                    )
-                }
-            )
-
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            )
-
-            SettingRow(
-                icon = Icons.Default.Alarm,
-                title = "Reminder Time",
-                subtitle = "Daily alert at $formattedTime",
-                onClick = openTimePicker,
-                trailing = {
-                    SuggestionChip(
-                        onClick = openTimePicker,
-                        label = {
-                            Text(
-                                text = formattedTime,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    )
-                }
-            )
         }
 
         // Section: Developer Options (DEBUG only)
