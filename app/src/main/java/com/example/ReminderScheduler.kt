@@ -12,6 +12,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.util.Calendar
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 object ReminderScheduler {
     const val ACTION_REMINDER = "com.example.ACTION_BEER_REMINDER"
@@ -132,12 +134,22 @@ object ReminderScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val dataStoreManager = DataStoreManager(context)
+        val langCode = runBlocking {
+            try {
+                dataStoreManager.language.first()
+            } catch (e: Exception) {
+                "en"
+            }
+        }
+        val strings = AppStrings.forLanguage(langCode)
+
         val calendar = Calendar.getInstance()
         val isFriday = calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
         val message = if (isFriday && (0..2).random() == 0) {
-            NotificationContent("Friday is here! 🍻", "End of the work week — time to crack open a cold one!")
+            strings.fridayNotificationMessage
         } else {
-            funMessages.random()
+            strings.funNotificationMessages.random()
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)

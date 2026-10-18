@@ -1,3 +1,8 @@
 package com.example
 
-data class Achievement(val name: String, val description: String, val isUnlocked: Boolean)
+data class Achievement(
+    val id: String = "",
+    val name: String,
+    val description: String,
+    val isUnlocked: Boolean
+)

@@ -45,12 +45,12 @@ class BeerViewModel(private val beerDao: BeerDao) : ViewModel() {
         } ?: 0
 
         listOf(
-            Achievement("Beer Connoisseur", "Drunk beer for 10 distinct days", distinctDaysAllTime >= 10),
-            Achievement("Beer Veteran", "Drunk beer for 100 distinct days", distinctDaysAllTime >= 100),
-            Achievement("Beer Legend", "Drunk beer for 1,000 distinct days", distinctDaysAllTime >= 1000),
-            Achievement("Weekend Warrior", "Drunk beer on > 5 days in a week", maxDaysInAWeek > 5),
-            Achievement("Flawless Week", "All 7 days in a single calendar week", maxDaysInAWeek >= 7),
-            Achievement("Oktoberfest Spirit", "20+ days with beer in a single calendar month", maxDaysInAMonth >= 20)
+            Achievement("connoisseur", "Beer Connoisseur", "Drunk beer for 10 distinct days", distinctDaysAllTime >= 10),
+            Achievement("veteran", "Beer Veteran", "Drunk beer for 100 distinct days", distinctDaysAllTime >= 100),
+            Achievement("legend", "Beer Legend", "Drunk beer for 1,000 distinct days", distinctDaysAllTime >= 1000),
+            Achievement("weekend", "Weekend Warrior", "Drunk beer on > 5 days in a week", maxDaysInAWeek > 5),
+            Achievement("flawless", "Flawless Week", "All 7 days in a single calendar week", maxDaysInAWeek >= 7),
+            Achievement("oktoberfest", "Oktoberfest Spirit", "20+ days with beer in a single calendar month", maxDaysInAMonth >= 20)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

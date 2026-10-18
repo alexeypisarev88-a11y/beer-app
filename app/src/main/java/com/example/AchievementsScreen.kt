@@ -18,6 +18,7 @@ fun AchievementsScreen(
     onBack: () -> Unit,
     viewModel: BeerViewModel = viewModel(factory = BeerViewModelFactory((androidx.compose.ui.platform.LocalContext.current.applicationContext as BeerApplication).database.beerDao()))
 ) {
+    val strings = LocalAppStrings.current
     val achievements by viewModel.achievements.collectAsState()
 
     Column(
@@ -42,14 +43,14 @@ fun AchievementsScreen(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Back to Reminder")
+                Text(strings.backToReminder)
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Achievements",
+            text = strings.achievementsTitle,
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -57,6 +58,16 @@ fun AchievementsScreen(
 
         LazyColumn {
             items(achievements) { achievement ->
+                val (title, description) = when (achievement.id) {
+                    "connoisseur" -> Pair(strings.achConnoisseurTitle, strings.achConnoisseurDesc)
+                    "veteran" -> Pair(strings.achVeteranTitle, strings.achVeteranDesc)
+                    "legend" -> Pair(strings.achLegendTitle, strings.achLegendDesc)
+                    "weekend" -> Pair(strings.achWeekendTitle, strings.achWeekendDesc)
+                    "flawless" -> Pair(strings.achFlawlessTitle, strings.achFlawlessDesc)
+                    "oktoberfest" -> Pair(strings.achOktoberfestTitle, strings.achOktoberfestDesc)
+                    else -> Pair(achievement.name, achievement.description)
+                }
+
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     colors = CardDefaults.elevatedCardColors(
@@ -65,13 +76,13 @@ fun AchievementsScreen(
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
-                            text = achievement.name, 
+                            text = title, 
                             style = MaterialTheme.typography.titleLarge,
                             color = if (achievement.isUnlocked) Color(0xFF000000) else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = achievement.description, 
+                            text = description, 
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (achievement.isUnlocked) Color(0xFF000000) else MaterialTheme.colorScheme.onSurfaceVariant
                         )

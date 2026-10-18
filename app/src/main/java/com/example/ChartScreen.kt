@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,15 +12,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.DateFormatSymbols
 import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun ChartScreen(
     onBack: () -> Unit,
-    viewModel: BeerViewModel = viewModel(factory = BeerViewModelFactory((androidx.compose.ui.platform.LocalContext.current.applicationContext as BeerApplication).database.beerDao()))
+    viewModel: BeerViewModel = viewModel(factory = BeerViewModelFactory((LocalContext.current.applicationContext as BeerApplication).database.beerDao()))
 ) {
+    val context = LocalContext.current
+    val strings = LocalAppStrings.current
+    val dataStoreManager = remember { DataStoreManager(context) }
+    val langCode by dataStoreManager.language.collectAsState(initial = "en")
+    val currentLocale = remember(langCode) {
+        when (langCode) {
+            "ru" -> Locale("ru")
+            "zh" -> Locale.SIMPLIFIED_CHINESE
+            else -> Locale.ENGLISH
+        }
+    }
+
     val consumption by viewModel.consumption.collectAsState()
     
     val calendar = Calendar.getInstance()
@@ -57,14 +72,14 @@ fun ChartScreen(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Back to Reminder")
+                Text(strings.backToReminder)
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Calendar",
+            text = strings.calendarTitle,
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -79,7 +94,7 @@ fun ChartScreen(
                 if (displayMonth == 0) { displayMonth = 11; displayYear-- } else { displayMonth-- }
             }) { Text("<") }
             Text(
-                text = "${java.text.DateFormatSymbols().months[displayMonth]} $displayYear",
+                text = "${DateFormatSymbols(currentLocale).months[displayMonth]} $displayYear",
                 style = MaterialTheme.typography.titleLarge
             )
             IconButton(onClick = {
@@ -87,6 +102,22 @@ fun ChartScreen(
             }) { Text(">") }
         }
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Weekday column headers
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            strings.weekdayHeaders.forEach { header ->
+                Text(
+                    text = header,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(40.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
         
         val tempCal = Calendar.getInstance().apply { set(displayYear, displayMonth, 1) }
         val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
@@ -97,7 +128,7 @@ fun ChartScreen(
             modifier = Modifier.weight(1f)
         ) {
             // Empty slots for days before the 1st
-            items(firstDayOfWeek - 1) {
+            items(firstDayOfWeek) {
                 Box(modifier = Modifier.size(40.dp))
             }
             items(daysInMonth) { day ->

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,10 +39,12 @@ fun SettingsScreen(
     onThemeChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val strings = LocalAppStrings.current
     val dataStoreManager = remember { DataStoreManager(context) }
     val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
     val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
     val selectedGlassType by dataStoreManager.glassType.collectAsState(initial = BeerGlassType.PINT)
+    val currentLangCode by dataStoreManager.language.collectAsState(initial = "en")
     val scope = rememberCoroutineScope()
 
     val launcher = rememberLauncherForActivityResult(
@@ -73,22 +76,22 @@ fun SettingsScreen(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Back to Reminder")
+                Text(strings.backToReminder)
             }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Settings",
+            text = strings.settingsTitle,
             style = MaterialTheme.typography.headlineMedium
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section: Notifications & Schedule
+        // Section 1: Notifications & Schedule (Must be first)
         Text(
-            text = "NOTIFICATIONS",
+            text = strings.sectionNotifications,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -116,8 +119,8 @@ fun SettingsScreen(
 
             SettingRow(
                 icon = Icons.Default.Notifications,
-                title = "Daily Reminders",
-                subtitle = if (isEnabled) "Active at $formattedTime" else "Reminders are disabled",
+                title = strings.dailyReminders,
+                subtitle = if (isEnabled) strings.remindersActiveAt(formattedTime) else strings.remindersDisabled,
                 trailing = {
                     Switch(
                         checked = isEnabled,
@@ -146,8 +149,8 @@ fun SettingsScreen(
 
             SettingRow(
                 icon = Icons.Default.Alarm,
-                title = "Reminder Time",
-                subtitle = "Daily alert at $formattedTime",
+                title = strings.reminderTime,
+                subtitle = strings.dailyAlertAt(formattedTime),
                 onClick = openTimePicker,
                 trailing = {
                     SuggestionChip(
@@ -165,9 +168,93 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section: Appearance
+        // Section 2: Language Selection
         Text(
-            text = "APPEARANCE",
+            text = strings.sectionLanguage,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column {
+                AppLanguage.entries.forEachIndexed { index, appLang ->
+                    val isSelected = appLang.code == currentLangCode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                scope.launch { dataStoreManager.setLanguage(appLang) }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = when (appLang) {
+                                    AppLanguage.ENGLISH -> "🇬🇧"
+                                    AppLanguage.RUSSIAN -> "🇷🇺"
+                                    AppLanguage.CHINESE -> "🇨🇳"
+                                },
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = appLang.nativeName,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            if (appLang.nativeName != appLang.title) {
+                                Text(
+                                    text = appLang.title,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        RadioButton(
+                            selected = isSelected,
+                            onClick = {
+                                scope.launch { dataStoreManager.setLanguage(appLang) }
+                            }
+                        )
+                    }
+
+                    if (index < AppLanguage.entries.size - 1) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Section 3: Appearance
+        Text(
+            text = strings.sectionAppearance,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -182,8 +269,8 @@ fun SettingsScreen(
         ) {
             SettingRow(
                 icon = Icons.Default.DarkMode,
-                title = "Dark Theme",
-                subtitle = if (darkTheme) "Dark theme enabled" else "Light theme enabled",
+                title = strings.darkTheme,
+                subtitle = if (darkTheme) strings.darkThemeEnabled else strings.lightThemeEnabled,
                 trailing = {
                     Switch(
                         checked = darkTheme,
@@ -195,9 +282,9 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Section: Glass Shape
+        // Section 4: Glass Shape
         Text(
-            text = "GLASS SHAPE",
+            text = strings.sectionGlassShape,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -213,6 +300,14 @@ fun SettingsScreen(
             Column {
                 BeerGlassType.entries.forEachIndexed { index, type ->
                     val isSelected = type == selectedGlassType
+                    val (typeName, typeDesc) = when (type) {
+                        BeerGlassType.PINT -> Pair(strings.pintName, strings.pintDesc)
+                        BeerGlassType.MUG -> Pair(strings.mugName, strings.mugDesc)
+                        BeerGlassType.WEIZEN -> Pair(strings.weizenName, strings.weizenDesc)
+                        BeerGlassType.TULIP -> Pair(strings.tulipName, strings.tulipDesc)
+                        BeerGlassType.BOOT -> Pair(strings.bootName, strings.bootDesc)
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -243,13 +338,13 @@ fun SettingsScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = type.displayName,
+                                text = typeName,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = type.description,
+                                text = typeDesc,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -273,11 +368,11 @@ fun SettingsScreen(
             }
         }
 
-        // Section: Developer Options (DEBUG only)
+        // Section 5: Developer Options (DEBUG only)
         if (BuildConfig.DEBUG) {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "DEVELOPER OPTIONS",
+                text = strings.sectionDevOptions,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -292,15 +387,15 @@ fun SettingsScreen(
             ) {
                 SettingRow(
                     icon = Icons.Default.BugReport,
-                    title = "Test Notification",
-                    subtitle = "Trigger push alert immediately",
+                    title = strings.testNotification,
+                    subtitle = strings.testNotificationSubtitle,
                     onClick = { ReminderScheduler.sendNotification(context) },
                     trailing = {
                         FilledTonalButton(
                             onClick = { ReminderScheduler.sendNotification(context) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Test")
+                            Text(strings.sendButton)
                         }
                     }
                 )

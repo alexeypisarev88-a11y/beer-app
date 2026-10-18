@@ -16,6 +16,11 @@ class DataStoreManager(private val context: Context) {
         val ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
         val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
         val GLASS_TYPE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("beer_glass_type")
+        val LANGUAGE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("app_language")
+    }
+
+    val language = context.dataStore.data.map { prefs ->
+        prefs[LANGUAGE_KEY] ?: AppLanguage.ENGLISH.code
     }
 
     val reminderTime = context.dataStore.data.map { prefs ->
@@ -61,6 +66,12 @@ class DataStoreManager(private val context: Context) {
     suspend fun setGlassType(type: BeerGlassType) {
         context.dataStore.edit { prefs ->
             prefs[GLASS_TYPE_KEY] = type.name
+        }
+    }
+
+    suspend fun setLanguage(lang: AppLanguage) {
+        context.dataStore.edit { prefs ->
+            prefs[LANGUAGE_KEY] = lang.code
         }
     }
 }

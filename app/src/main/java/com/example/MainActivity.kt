@@ -36,25 +36,29 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        val dataStoreManager = remember { DataStoreManager(context) }
-        val isDarkTheme by dataStoreManager.isDarkTheme.collectAsState(initial = false)
-        val scope = rememberCoroutineScope()
-        
-        MyApplicationTheme(darkTheme = isDarkTheme) {
-            val view = androidx.compose.ui.platform.LocalView.current
-            androidx.compose.runtime.SideEffect {
-                val window = (view.context as android.app.Activity).window
-                androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val dataStoreManager = remember { DataStoreManager(context) }
+            val isDarkTheme by dataStoreManager.isDarkTheme.collectAsState(initial = false)
+            val languageCode by dataStoreManager.language.collectAsState(initial = "en")
+            val strings = remember(languageCode) { AppStrings.forLanguage(languageCode) }
+            val scope = rememberCoroutineScope()
+            
+            CompositionLocalProvider(LocalAppStrings provides strings) {
+                MyApplicationTheme(darkTheme = isDarkTheme) {
+                    val view = androidx.compose.ui.platform.LocalView.current
+                    androidx.compose.runtime.SideEffect {
+                        val window = (view.context as android.app.Activity).window
+                        androidx.core.view.WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+                    }
+                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                        BeerReminderScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            isDarkTheme = isDarkTheme,
+                            onThemeChange = { scope.launch { dataStoreManager.setDarkTheme(it) } }
+                        )
+                    }
+                }
             }
-            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                BeerReminderScreen(
-                    modifier = Modifier.padding(innerPadding),
-                    isDarkTheme = isDarkTheme,
-                    onThemeChange = { scope.launch { dataStoreManager.setDarkTheme(it) } }
-                )
-            }
-        }
         }
     }
 }
@@ -62,6 +66,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onThemeChange: (Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val strings = LocalAppStrings.current
     val dataStoreManager = remember { DataStoreManager(context) }
     val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
     val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
@@ -142,13 +147,13 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
             },
             title = {
                 Text(
-                    text = "Enable Notifications",
+                    text = strings.enableNotificationsTitle,
                     style = MaterialTheme.typography.titleLarge
                 )
             },
             text = {
                 Text(
-                    text = "Beer Reminder needs notification permissions to remind you when it's beer time. Please enable notifications so you never miss a toast!",
+                    text = strings.enableNotificationsText,
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -173,12 +178,12 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                         }
                     }
                 ) {
-                    Text("Open Settings")
+                    Text(strings.openSettings)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionRationaleDialog = false }) {
-                    Text("Later")
+                    Text(strings.later)
                 }
             }
         )
@@ -238,19 +243,19 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                     }
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Beer Reminder", style = MaterialTheme.typography.headlineMedium)
+            Text(strings.appName, style = MaterialTheme.typography.headlineMedium)
             Spacer(modifier = Modifier.height(24.dp))
             val buttonModifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
             Button(onClick = { showChart = true }, modifier = buttonModifier) {
-                Text("Calendar")
+                Text(strings.calendar)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showAchievements = true }, modifier = buttonModifier) {
-                Text("Achievements")
+                Text(strings.achievements)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showSettings = true }, modifier = buttonModifier) {
-                Text("Settings")
+                Text(strings.settings)
             }
         }
     }
