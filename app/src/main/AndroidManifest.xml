@@ -21,37 +21,13 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.MyApplication" />
-
-        <activity-alias
-            android:name=".MainActivityAliasEmpty"
-            android:enabled="true"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher_empty"
-            android:roundIcon="@mipmap/ic_launcher_empty_round"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
+            android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:name=".MainActivityAliasFull"
-            android:enabled="false"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher_full"
-            android:roundIcon="@mipmap/ic_launcher_full_round"
-            android:label="@string/app_name"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
+        </activity>
         <receiver android:name=".AlarmReceiver" android:enabled="true" android:exported="false" />
         <receiver
             android:name=".BootReceiver"

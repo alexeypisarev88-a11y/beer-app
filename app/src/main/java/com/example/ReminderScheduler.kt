@@ -96,14 +96,14 @@ object ReminderScheduler {
     data class NotificationContent(val title: String, val text: String)
 
     private val funMessages = listOf(
-        NotificationContent("Beer time! 🍺", "Время охладиться и сделать паузу!"),
-        NotificationContent("Пятница пришла! 🍻", "Идеальный момент для холодного пенного!"),
-        NotificationContent("Бокал сам себя не выпьет! 🍺", "Пора сделать перерыв и насладиться моментом."),
-        NotificationContent("Время охладиться ❄️🍺", "Освежающий пенный бокал ждет тебя!"),
-        NotificationContent("Хмельной зов 🍻", "Отличный вечер начинается с хорошего пива."),
-        NotificationContent("Минутка для себя 🍺", "Трудовой день позади — пора налить бокальчик!"),
-        NotificationContent("Золотистая пенка 🍺", "Сделай глоток свежести и расслабься."),
-        NotificationContent("Пенный патруль 🍻", "Напоминание: день прошел отлично, если есть бокальчик!")
+        NotificationContent("Beer time! 🍺", "Time to cool down and take a refreshing break!"),
+        NotificationContent("Cheers to the day! 🍻", "The perfect moment for a crisp, cold brew!"),
+        NotificationContent("The glass won't drink itself! 🍺", "Time to take a break and enjoy a cold one."),
+        NotificationContent("Time to chill! ❄️🍺", "A refreshing golden glass is waiting for you."),
+        NotificationContent("The hop call! 🍻", "A great evening starts with good cold beer."),
+        NotificationContent("A moment for yourself 🍺", "Workday is done — time to pour a cold pint!"),
+        NotificationContent("Golden foam awaits 🍺", "Take a fresh sip and unwind after a long day."),
+        NotificationContent("Froth patrol 🍻", "Reminder: your day is complete with a cold beer!")
     )
 
     fun sendNotification(context: Context) {
@@ -135,7 +135,7 @@ object ReminderScheduler {
         val calendar = Calendar.getInstance()
         val isFriday = calendar.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
         val message = if (isFriday && (0..2).random() == 0) {
-            NotificationContent("Пятница пришла! 🍻", "Конец рабочей недели — время открыть холодный бокал!")
+            NotificationContent("Friday is here! 🍻", "End of the work week — time to crack open a cold one!")
         } else {
             funMessages.random()
         }

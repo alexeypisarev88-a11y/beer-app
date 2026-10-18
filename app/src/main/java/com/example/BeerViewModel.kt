@@ -44,46 +44,12 @@ class BeerViewModel(private val beerDao: BeerDao) : ViewModel() {
             }.distinct().size
         } ?: 0
 
-        // Consecutive days streak
-        val sortedDayEpochs = list.map {
-            val cal = Calendar.getInstance().apply {
-                timeInMillis = it.date
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            cal.timeInMillis
-        }.distinct().sorted()
-
-        var maxStreak = 0
-        var currentStreak = 0
-        var lastDayEpoch: Long? = null
-
-        for (epoch in sortedDayEpochs) {
-            if (lastDayEpoch == null) {
-                currentStreak = 1
-            } else {
-                val diffDays = Math.round((epoch - lastDayEpoch).toDouble() / (24 * 60 * 60 * 1000)).toInt()
-                if (diffDays == 1) {
-                    currentStreak++
-                } else if (diffDays > 1) {
-                    currentStreak = 1
-                }
-            }
-            lastDayEpoch = epoch
-            if (currentStreak > maxStreak) {
-                maxStreak = currentStreak
-            }
-        }
-
         listOf(
             Achievement("Beer Connoisseur", "Drunk beer for 10 distinct days", distinctDaysAllTime >= 10),
             Achievement("Beer Veteran", "Drunk beer for 100 distinct days", distinctDaysAllTime >= 100),
             Achievement("Beer Legend", "Drunk beer for 1,000 distinct days", distinctDaysAllTime >= 1000),
             Achievement("Weekend Warrior", "Drunk beer on > 5 days in a week", maxDaysInAWeek > 5),
             Achievement("Flawless Week", "All 7 days in a single calendar week", maxDaysInAWeek >= 7),
-            Achievement("No Days Off", "7 consecutive days in a row without breaks", maxStreak >= 7),
             Achievement("Oktoberfest Spirit", "20+ days with beer in a single calendar month", maxDaysInAMonth >= 20)
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

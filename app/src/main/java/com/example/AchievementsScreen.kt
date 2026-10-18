@@ -25,7 +25,7 @@ fun AchievementsScreen(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         // Top Navigation Header matching Settings
         Row(

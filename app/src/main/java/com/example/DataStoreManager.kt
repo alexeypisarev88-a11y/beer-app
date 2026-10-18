@@ -15,6 +15,7 @@ class DataStoreManager(private val context: Context) {
         val MINUTE_KEY = intPreferencesKey("reminder_minute")
         val ENABLED_KEY = booleanPreferencesKey("reminder_enabled")
         val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
+        val GLASS_TYPE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("beer_glass_type")
     }
 
     val reminderTime = context.dataStore.data.map { prefs ->
@@ -27,6 +28,15 @@ class DataStoreManager(private val context: Context) {
 
     val isDarkTheme = context.dataStore.data.map { prefs ->
         prefs[DARK_THEME_KEY] ?: false
+    }
+
+    val glassType = context.dataStore.data.map { prefs ->
+        val name = prefs[GLASS_TYPE_KEY] ?: BeerGlassType.PINT.name
+        try {
+            BeerGlassType.valueOf(name)
+        } catch (e: Exception) {
+            BeerGlassType.PINT
+        }
     }
 
     suspend fun saveReminderTime(hour: Int, minute: Int) {
@@ -45,6 +55,12 @@ class DataStoreManager(private val context: Context) {
     suspend fun setDarkTheme(isDark: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[DARK_THEME_KEY] = isDark
+        }
+    }
+
+    suspend fun setGlassType(type: BeerGlassType) {
+        context.dataStore.edit { prefs ->
+            prefs[GLASS_TYPE_KEY] = type.name
         }
     }
 }

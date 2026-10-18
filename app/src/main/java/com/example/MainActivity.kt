@@ -2,28 +2,33 @@ package com.example
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.example.ui.theme.MyApplicationTheme
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -60,11 +65,62 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
     val dataStoreManager = remember { DataStoreManager(context) }
     val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
     val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
+    val glassType by dataStoreManager.glassType.collectAsState(initial = BeerGlassType.PINT)
     val scope = rememberCoroutineScope()
 
     var showChart by remember { mutableStateOf(false) }
     var showAchievements by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+
+    val notificationManagerCompat = remember(context) { NotificationManagerCompat.from(context) }
+
+    fun isNotificationPermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED && notificationManagerCompat.areNotificationsEnabled()
+        } else {
+            notificationManagerCompat.areNotificationsEnabled()
+        }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            scope.launch { dataStoreManager.setReminderEnabled(true) }
+        } else {
+            showPermissionRationaleDialog = true
+        }
+    }
+
+    // Startup check: verify notification permission and prompt user if not granted
+    LaunchedEffect(Unit) {
+        if (!isNotificationPermissionGranted()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val postGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (!postGranted) {
+                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    showPermissionRationaleDialog = true
+                }
+            } else {
+                showPermissionRationaleDialog = true
+            }
+        }
+    }
+
+    // Auto-dismiss rationale dialog and sync if permissions are enabled in Settings
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (isNotificationPermissionGranted()) {
+            showPermissionRationaleDialog = false
+        }
+    }
 
     LaunchedEffect(isEnabled, reminderTime) {
         if (isEnabled) {
@@ -72,6 +128,60 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
         } else {
             ReminderScheduler.cancelReminder(context)
         }
+    }
+
+    if (showPermissionRationaleDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationaleDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    text = "Enable Notifications",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "Beer Reminder needs notification permissions to remind you when it's beer time. Please enable notifications so you never miss a toast!",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPermissionRationaleDialog = false
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        } else {
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            val fallbackIntent = Intent(Settings.ACTION_SETTINGS)
+                            context.startActivity(fallbackIntent)
+                        }
+                    }
+                ) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationaleDialog = false }) {
+                    Text("Later")
+                }
+            }
+        )
     }
 
     if (showChart) {
@@ -84,12 +194,6 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
         androidx.activity.compose.BackHandler { showSettings = false }
         SettingsScreen(onBack = { showSettings = false }, darkTheme = isDarkTheme, onThemeChange = onThemeChange)
     } else {
-        val launcher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            scope.launch { dataStoreManager.setReminderEnabled(isGranted) }
-        }
-
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -118,12 +222,9 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                 }
             }
 
-            LaunchedEffect(isConsumedToday) {
-                DynamicIconManager.updateAppIcon(context, isConsumedToday)
-            }
-
             BeerGlassAnimation(
                 isFilled = isConsumedToday, 
+                glassType = glassType,
                 modifier = Modifier
                     .size(128.dp)
                     .clickable(
@@ -133,38 +234,19 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
                         triggerPouringVibration(context)
                         scope.launch {
                             beerDao.insertConsumption(BeerConsumption(date = System.currentTimeMillis(), count = 1))
-                            DynamicIconManager.updateAppIcon(context, true)
                         }
                     }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text("Beer Reminder", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-            Switch(
-                checked = isEnabled,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            scope.launch { dataStoreManager.setReminderEnabled(true) }
-                        }
-                    } else {
-                        scope.launch { dataStoreManager.setReminderEnabled(false) }
-                    }
-                },
-                modifier = Modifier.testTag("reminder_switch")
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             val buttonModifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
             Button(onClick = { showChart = true }, modifier = buttonModifier) {
                 Text("Calendar")
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showAchievements = true }, modifier = buttonModifier) {
-                Text("View Achievements")
+                Text("Achievements")
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { showSettings = true }, modifier = buttonModifier) {
