@@ -119,7 +119,7 @@ data class AppStrings(
             bootDesc = "Traditional Bavarian bierstiefel",
 
             calendarTitle = "Calendar",
-            weekdayHeaders = listOf("S", "M", "T", "W", "T", "F", "S"),
+            weekdayHeaders = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
 
             achievementsTitle = "Achievements",
             achConnoisseurTitle = "Beer Connoisseur",
@@ -193,7 +193,7 @@ data class AppStrings(
             bootDesc = "Традиционный баварский бокал-сапог",
 
             calendarTitle = "Календарь",
-            weekdayHeaders = listOf("Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"),
+            weekdayHeaders = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"),
 
             achievementsTitle = "Достижения",
             achConnoisseurTitle = "Знаток пива",
@@ -267,7 +267,7 @@ data class AppStrings(
             bootDesc = "传统巴伐利亚庆典啤酒靴",
 
             calendarTitle = "日历",
-            weekdayHeaders = listOf("日", "一", "二", "三", "四", "五", "六"),
+            weekdayHeaders = listOf("一", "二", "三", "四", "五", "六", "日"),
 
             achievementsTitle = "成就",
             achConnoisseurTitle = "品酒鉴赏家",

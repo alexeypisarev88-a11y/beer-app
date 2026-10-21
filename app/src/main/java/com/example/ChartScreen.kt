@@ -121,14 +121,15 @@ fun ChartScreen(
         
         val tempCal = Calendar.getInstance().apply { set(displayYear, displayMonth, 1) }
         val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val firstDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK) - 1 // 1: Sunday, 2: Monday...
+        // Week starts on Monday: Monday = 0, Tuesday = 1, ..., Sunday = 6
+        val emptySlotsBeforeFirst = (tempCal.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
             modifier = Modifier.weight(1f)
         ) {
             // Empty slots for days before the 1st
-            items(firstDayOfWeek) {
+            items(emptySlotsBeforeFirst) {
                 Box(modifier = Modifier.size(40.dp))
             }
             items(daysInMonth) { day ->
