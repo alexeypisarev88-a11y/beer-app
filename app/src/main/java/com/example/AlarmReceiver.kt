@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +16,13 @@ import java.util.Calendar
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val wakeLock = powerManager?.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "BeerReminder:AlarmWakeLock"
+        )
+        wakeLock?.acquire(30_000)
+
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -22,10 +30,19 @@ class AlarmReceiver : BroadcastReceiver() {
                 val isEnabled = dataStoreManager.isEnabled.first()
                 val reminderTime = dataStoreManager.reminderTime.first()
 
-                // Reschedule for tomorrow if reminder is enabled
+                // Crucial: Always reschedule for tomorrow immediately
                 if (isEnabled) {
-                    ReminderScheduler.scheduleReminder(context, reminderTime.first, reminderTime.second)
+                    ReminderScheduler.scheduleNextDayReminder(context, reminderTime.first, reminderTime.second)
                 } else {
+                    return@launch
+                }
+
+                // Check if already notified today
+                val todayCal = Calendar.getInstance()
+                val currentYear = todayCal.get(Calendar.YEAR)
+                val currentDay = todayCal.get(Calendar.DAY_OF_YEAR)
+                val lastNotified = dataStoreManager.lastNotified.first()
+                if (lastNotified.first == currentYear && lastNotified.second == currentDay) {
                     return@launch
                 }
 
@@ -48,7 +65,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 }
 
                 if (consumedToday) {
-                    // Skip reminder if already consumed today
+                    // Skip reminder if user already drank beer today
                     return@launch
                 }
 
@@ -68,6 +85,13 @@ class AlarmReceiver : BroadcastReceiver() {
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
+                try {
+                    if (wakeLock?.isHeld == true) {
+                        wakeLock.release()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 pendingResult.finish()
             }
         }

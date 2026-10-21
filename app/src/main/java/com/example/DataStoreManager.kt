@@ -17,6 +17,8 @@ class DataStoreManager(private val context: Context) {
         val DARK_THEME_KEY = booleanPreferencesKey("dark_theme")
         val GLASS_TYPE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("beer_glass_type")
         val LANGUAGE_KEY = androidx.datastore.preferences.core.stringPreferencesKey("app_language")
+        val LAST_NOTIFIED_DAY_KEY = intPreferencesKey("last_notified_day")
+        val LAST_NOTIFIED_YEAR_KEY = intPreferencesKey("last_notified_year")
     }
 
     val language = context.dataStore.data.map { prefs ->
@@ -28,7 +30,7 @@ class DataStoreManager(private val context: Context) {
     }
 
     val isEnabled = context.dataStore.data.map { prefs ->
-        prefs[ENABLED_KEY] ?: false
+        prefs[ENABLED_KEY] ?: true
     }
 
     val isDarkTheme = context.dataStore.data.map { prefs ->
@@ -73,5 +75,19 @@ class DataStoreManager(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[LANGUAGE_KEY] = lang.code
         }
+    }
+
+    suspend fun recordNotificationSentToday() {
+        val cal = java.util.Calendar.getInstance()
+        val day = cal.get(java.util.Calendar.DAY_OF_YEAR)
+        val year = cal.get(java.util.Calendar.YEAR)
+        context.dataStore.edit { prefs ->
+            prefs[LAST_NOTIFIED_DAY_KEY] = day
+            prefs[LAST_NOTIFIED_YEAR_KEY] = year
+        }
+    }
+
+    val lastNotified = context.dataStore.data.map { prefs ->
+        Pair(prefs[LAST_NOTIFIED_YEAR_KEY] ?: -1, prefs[LAST_NOTIFIED_DAY_KEY] ?: -1)
     }
 }

@@ -1,17 +1,18 @@
 package com.example
 
-import android.Manifest
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -20,8 +21,40 @@ object ReminderScheduler {
     private const val REQUEST_CODE = 2001
     private const val NOTIFICATION_ID = 1001
     const val CHANNEL_ID = "beer_reminder_channel"
+    private const val WORK_NAME = "beer_reminder_backup_work"
 
     fun scheduleReminder(context: Context, hour: Int, minute: Int) {
+        val now = Calendar.getInstance()
+        val target = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        // If target time is within 1 minute of now or in the past, schedule for tomorrow
+        if (target.timeInMillis <= now.timeInMillis + 60_000) {
+            target.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        setAlarmAt(context, target.timeInMillis)
+        scheduleBackupWorker(context, target.timeInMillis)
+    }
+
+    fun scheduleNextDayReminder(context: Context, hour: Int, minute: Int) {
+        val target = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        setAlarmAt(context, target.timeInMillis)
+        scheduleBackupWorker(context, target.timeInMillis)
+    }
+
+    private fun setAlarmAt(context: Context, triggerAtMillis: Long) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_REMINDER
@@ -33,48 +66,68 @@ object ReminderScheduler {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val now = Calendar.getInstance()
-        val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+        val showIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-
-        // If target time is before or equal to now, schedule for tomorrow
-        if (!target.after(now)) {
-            target.add(Calendar.DAY_OF_YEAR, 1)
-        }
+        val showPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            showIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        target.timeInMillis,
-                        pendingIntent
-                    )
+            // setAlarmClock is exempt from Doze mode and aggressive OEM background killers (Honor, Xiaomi, Samsung)
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerAtMillis, showPendingIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+        } catch (e: Exception) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAtMillis,
+                            pendingIntent
+                        )
+                    } else {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAtMillis,
+                            pendingIntent
+                        )
+                    }
                 } else {
-                    alarmManager.setExactAndAllowWhileIdle(
+                    alarmManager.setExact(
                         AlarmManager.RTC_WAKEUP,
-                        target.timeInMillis,
+                        triggerAtMillis,
                         pendingIntent
                     )
                 }
-            } else {
-                alarmManager.setExact(
+            } catch (e2: Exception) {
+                alarmManager.set(
                     AlarmManager.RTC_WAKEUP,
-                    target.timeInMillis,
+                    triggerAtMillis,
                     pendingIntent
                 )
             }
+        }
+    }
+
+    private fun scheduleBackupWorker(context: Context, triggerAtMillis: Long) {
+        try {
+            val delayMillis = triggerAtMillis - System.currentTimeMillis()
+            val workRequest = OneTimeWorkRequestBuilder<BeerReminderWorker>()
+                .setInitialDelay(maxOf(0L, delayMillis), TimeUnit.MILLISECONDS)
+                .addTag("beer_reminder_backup")
+                .build()
+
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                workRequest
+            )
         } catch (e: Exception) {
             e.printStackTrace()
-            alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                target.timeInMillis,
-                pendingIntent
-            )
         }
     }
 
@@ -93,20 +146,15 @@ object ReminderScheduler {
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
         }
+
+        try {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     data class NotificationContent(val title: String, val text: String)
-
-    private val funMessages = listOf(
-        NotificationContent("Beer time! 🍺", "Time to cool down and take a refreshing break!"),
-        NotificationContent("Cheers to the day! 🍻", "The perfect moment for a crisp, cold brew!"),
-        NotificationContent("The glass won't drink itself! 🍺", "Time to take a break and enjoy a cold one."),
-        NotificationContent("Time to chill! ❄️🍺", "A refreshing golden glass is waiting for you."),
-        NotificationContent("The hop call! 🍻", "A great evening starts with good cold beer."),
-        NotificationContent("A moment for yourself 🍺", "Workday is done — time to pour a cold pint!"),
-        NotificationContent("Golden foam awaits 🍺", "Take a fresh sip and unwind after a long day."),
-        NotificationContent("Froth patrol 🍻", "Reminder: your day is complete with a cold beer!")
-    )
 
     fun sendNotification(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -164,5 +212,14 @@ object ReminderScheduler {
             .build()
 
         notificationManager.notify(NOTIFICATION_ID, notification)
+
+        // Record that notification was sent today so backups don't duplicate
+        runBlocking {
+            try {
+                dataStoreManager.recordNotificationSentToday()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }
