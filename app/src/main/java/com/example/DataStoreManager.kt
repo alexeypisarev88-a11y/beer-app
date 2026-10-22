@@ -26,7 +26,7 @@ class DataStoreManager(private val context: Context) {
     }
 
     val reminderTime = context.dataStore.data.map { prefs ->
-        Pair(prefs[HOUR_KEY] ?: 18, prefs[MINUTE_KEY] ?: 0)
+        Pair(prefs[HOUR_KEY] ?: 19, prefs[MINUTE_KEY] ?: 0)
     }
 
     val isEnabled = context.dataStore.data.map { prefs ->

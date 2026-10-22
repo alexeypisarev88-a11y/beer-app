@@ -41,8 +41,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val strings = LocalAppStrings.current
     val dataStoreManager = remember { DataStoreManager(context) }
-    val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
-    val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
+    val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = true)
+    val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(19, 0))
     val selectedGlassType by dataStoreManager.glassType.collectAsState(initial = BeerGlassType.PINT)
     val currentLangCode by dataStoreManager.language.collectAsState(initial = "en")
     val scope = rememberCoroutineScope()

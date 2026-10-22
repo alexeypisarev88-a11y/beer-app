@@ -68,8 +68,8 @@ fun BeerReminderScreen(modifier: Modifier = Modifier, isDarkTheme: Boolean, onTh
     val context = androidx.compose.ui.platform.LocalContext.current
     val strings = LocalAppStrings.current
     val dataStoreManager = remember { DataStoreManager(context) }
-    val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = false)
-    val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(18, 0))
+    val isEnabled by dataStoreManager.isEnabled.collectAsState(initial = true)
+    val reminderTime by dataStoreManager.reminderTime.collectAsState(initial = Pair(19, 0))
     val glassType by dataStoreManager.glassType.collectAsState(initial = BeerGlassType.PINT)
     val scope = rememberCoroutineScope()
 
